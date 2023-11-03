@@ -13,14 +13,13 @@
 */
 
 description = "i-cut waterjet";
-vendor = "Autodesk";
-vendorUrl = "http://www.autodesk.com";
-legal = "Copyright (C) 2015-2021 by Autodesk, Inc.";
+vendor = "OliverTansley";
+vendorUrl = "";
+legal = "";
 certificationLevel = 2;
 minimumRevision = 45702;
 
-longDescription =
-  "This post demonstrates the capabilities of the post processor for waterjet, laser, and plasma cutting. You can use this as a foundation when you need a post for a new CNC. Note that this post cannot be used with milling toolpath. You can only use it for 'jet' style toolpath.";
+longDescription = "New post processor for the IcutWater waterjet";
 
 extension = "nc";
 setCodePage("ascii");
@@ -206,14 +205,14 @@ function onOpen() {
   }
 
   // absolute coordinates and feed per min
-  writeBlock(gAbsIncModal.format(90));
+  writeBlock(gAbsIncModal.format(90), "; absolute coordinates");
 
   switch (unit) {
     case IN:
-      writeBlock(gUnitModal.format(20));
+      writeBlock(gUnitModal.format(20), "; units inches");
       break;
     case MM:
-      writeBlock(gUnitModal.format(21));
+      writeBlock(gUnitModal.format(21), "; units millimeters");
       break;
   }
 }
@@ -275,11 +274,6 @@ function onSection() {
       case TOOL_PLASMA_CUTTER:
         writeComment("Plasma cutting");
         break;
-      /*
-    case TOOL_MARKER:
-      writeComment("Marker");
-      break;
-    */
       default:
         error(localize("The CNC does not support the required tool."));
         return;
@@ -312,18 +306,6 @@ function onSection() {
     writeln("");
   }
 
-  /*
-  // wcs
-  if (insertToolCall) { // force work offset when changing tool
-    currentWorkOffset = undefined;
-  }
-
-  if (currentSection.workOffset != currentWorkOffset) {
-    writeBlock(currentSection.wcs);
-    currentWorkOffset = currentSection.workOffset;
-  }
- */
-
   forceXYZ();
 
   {
@@ -335,18 +317,6 @@ function onSection() {
     }
     setRotation(remaining);
   }
-
-  /*
-  // set coolant after we have positioned at Z
-  if (false) {
-    var c = mapCoolantTable.lookup(tool.coolant);
-    if (c) {
-      writeBlock(mFormat.format(c));
-    } else {
-      warning(localize("Coolant not supported."));
-    }
-  }
-*/
 
   forceAny();
 
