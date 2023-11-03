@@ -1,1 +1,1 @@
-mv WAWE_postProcessor.cps /Applications/Autodesk\ Fusion\ 360.app/Contents/PostProcessors/
+mv WAWE_postProcessor.cps /Users/olivertansley/Autodesk/Fusion 360 CAM/Posts/WAWE_postProcessor.cps
