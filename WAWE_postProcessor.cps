@@ -12,21 +12,20 @@
   FORKID {51C1E5C7-D09E-458F-AC35-4A2CE1E0AE32}
 */
 
+/* POST SETTINGS */
 description = "i-cut waterjet";
 vendor = "OliverTansley";
 vendorUrl = "";
 legal = "";
 certificationLevel = 2;
 minimumRevision = 45702;
-
 longDescription = "New post processor for the IcutWater waterjet";
-
 extension = "nc";
 setCodePage("ascii");
-
 capabilities = CAPABILITY_JET;
 tolerance = spatial(0.002, MM);
 
+// Built in preferences (Don't delete)
 minimumChordLength = spatial(0.25, MM);
 minimumCircularRadius = spatial(0.01, MM);
 maximumCircularRadius = spatial(1000, MM);
@@ -35,6 +34,7 @@ maximumCircularSweep = toRad(180);
 allowHelicalMoves = false;
 allowedCircularPlanes = undefined; // allow any circular motion
 
+// User defined properties
 properties = {
   // material enum is used to determine which cut speed and abrasive feed rate are used
   cutMaterial: {
@@ -53,12 +53,20 @@ properties = {
       { title: "Aluminium 1mm Fine", id: "7" },
     ],
   },
-  // seperateWordsWithSpace determines wether white space is put between codes and arguments on the same line
+  // separateWordsWithSpace determines wether white space is put between codes and arguments on the same line
   separateWordsWithSpace: {
     title: "Separate word with space",
     description:
       "Indicates wether spaces are inserted between words and arguments",
     group: "formatting",
+    type: "boolean",
+    value: true,
+  },
+  pauseDelimited: {
+    title: "Pause between profiles",
+    description:
+      "If true the cutter will wait between profiles to allow safe removal of parts, press enter to move onto the next profile",
+    group: "Operation",
     type: "boolean",
     value: true,
   },
@@ -161,7 +169,7 @@ function onOpen() {
       error("Unknown material provided");
   }
 
-  writeBlock("G131", "10");
+  writeBlock("G131", "10"); //acceleration 10mm/s^2
 
   writeBlock(gAbsIncModal.format(90), "; absolute coordinates");
 
@@ -187,62 +195,18 @@ function forceAny() {
   feedOutput.reset();
 }
 
+/**
+ Optionally adds a pause between all cutting profiles
+ */
 function onSection() {
-  var insertToolCall =
-    isFirstSection() ||
-    (currentSection.getForceToolChange &&
-      currentSection.getForceToolChange()) ||
-    tool.number != getPreviousSection().getTool().number;
-
-  var retracted = false; // specifies that the tool has been retracted to the safe plane
-
-  forceXYZ();
-
-  // pure 3D
-  var remaining = currentSection.workPlane;
-  if (!isSameDirection(remaining.forward, new Vector(0, 0, 1))) {
-    error(localize("Tool orientation is not supported."));
-    return;
-  }
-  setRotation(remaining);
-
-  forceAny();
-
-  split = false;
-  if (getProperty("useRetracts")) {
-    var initialPosition = getFramePosition(currentSection.getInitialPosition());
-
-    if (insertToolCall || retracted) {
-      gMotionModal.reset();
-
-      if (!machineConfiguration.isHeadConfiguration()) {
-        writeBlock(
-          gAbsIncModal.format(90),
-          gMotionModal.format(0),
-          xOutput.format(initialPosition.x),
-          yOutput.format(initialPosition.y)
-        );
-      } else {
-        writeBlock(
-          gAbsIncModal.format(90),
-          gMotionModal.format(0),
-          xOutput.format(initialPosition.x),
-          yOutput.format(initialPosition.y)
-        );
-      }
-    } else {
-      writeBlock(
-        gAbsIncModal.format(90),
-        gMotionModal.format(0),
-        xOutput.format(initialPosition.x),
-        yOutput.format(initialPosition.y)
-      );
-    }
-  } else {
-    split = true;
+  if (getProperty("pauseDelimited")) {
+    writeBlock(mFormat.format(999), "; PRESS ENTER TO CONTINUE");
   }
 }
 
+/**
+ * Outputs dwell statement
+ */
 function onDwell(seconds) {
   if (seconds > 99999.999) {
     warning(localize("Dwelling time is out of range."));
@@ -257,16 +221,14 @@ function onDwell(seconds) {
 }
 
 var pendingRadiusCompensation = -1;
-
 function onRadiusCompensation() {
   pendingRadiusCompensation = radiusCompensation;
 }
 
-var shapeArea = 0;
 var shapePerimeter = 0;
 var shapeSide = "inner";
 var cuttingSequence = "";
-
+var shapeArea = 0;
 function onParameter(name, value) {
   if (name == "action" && value == "pierce") {
     onDwell(2);
@@ -308,7 +270,6 @@ function onPower(power) {
 }
 
 var deviceOn = false;
-
 function setDeviceMode(enable) {
   if (enable != deviceOn) {
     deviceOn = enable;
@@ -405,14 +366,6 @@ function onLinear(_x, _y, _z, feed) {
   }
 }
 
-function onRapid5D(_x, _y, _z, _a, _b, _c) {
-  error(localize("The CNC does not support 5-axis simultaneous toolpath."));
-}
-
-function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
-  error(localize("The CNC does not support 5-axis simultaneous toolpath."));
-}
-
 function doSplit() {
   if (!split) {
     split = true;
@@ -495,46 +448,32 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
   }
 }
 
-var mapCommand = {
-  COMMAND_STOP: 0,
-  COMMAND_OPTIONAL_STOP: 1,
-  COMMAND_END: 2,
-};
-
+/**
+ Writes applicable mcode for a command
+ */
 function onCommand(command) {
-  switch (command) {
-    case COMMAND_POWER_ON:
-      return;
-    case COMMAND_POWER_OFF:
-      return;
-    case COMMAND_COOLANT_ON:
-      return;
-    case COMMAND_COOLANT_OFF:
-      return;
-    case COMMAND_LOCK_MULTI_AXIS:
-      return;
-    case COMMAND_UNLOCK_MULTI_AXIS:
-      return;
-    case COMMAND_BREAK_CONTROL:
-      return;
-    case COMMAND_TOOL_MEASURE:
-      return;
-  }
-
+  var mapCommand = {
+    COMMAND_STOP: 0,
+    COMMAND_OPTIONAL_STOP: 1,
+    COMMAND_END: 2,
+  };
   var stringId = getCommandStringId(command);
-  var mcode = mapCommand[stringId];
-  if (mcode != undefined) {
-    writeBlock(mFormat.format(mcode));
-  } else {
-    onUnsupportedCommand(command);
+  if (mapCommand[stringId] != undefined) {
+    writeBlock(mFormat.format(mapCommand[stringId]));
   }
 }
 
+/**
+ Turn off device at the end of each section
+ */
 function onSectionEnd() {
   setDeviceMode(false);
   forceAny();
 }
 
+/**
+ Terminate program
+ */
 function onClose() {
   writeln("");
 
@@ -544,6 +483,14 @@ function onClose() {
   writeBlock(gFormat.format(40)); // stop program
 }
 
-function setProperty(property, value) {
-  properties[property].current = value;
+/**
+ * UNSUPPORTED FUNCTIONALITY NOT REQUIRED BY WATER JETS
+ */
+
+function onRapid5D(_x, _y, _z, _a, _b, _c) {
+  error(localize("The CNC does not support 5-axis simultaneous toolpath."));
+}
+
+function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
+  error(localize("The CNC does not support 5-axis simultaneous toolpath."));
 }
