@@ -35,78 +35,46 @@ maximumCircularSweep = toRad(180);
 allowHelicalMoves = false;
 allowedCircularPlanes = undefined; // allow any circular motion
 
-// user-defined properties
 properties = {
-  writeMachine: {
-    title: "Write machine",
-    description: "Output the machine settings in the header of the code.",
-    group: "formats",
-    type: "boolean",
-    value: true,
-    scope: "post",
+  // material enum is used to determine which cut speed and abrasive feed rate are used
+  cutMaterial: {
+    title: "CutMaterial",
+    description: "What material will the post process cut for",
+    group: "Material",
+    type: "enum",
+    value: "1",
+    values: [
+      { title: "Aluminium 8mm Good", id: "1" },
+      { title: "Aluminium 6mm Rough", id: "2" },
+      { title: "Aluminium 6mm Medium", id: "3" },
+      { title: "Aluminium 3mm Medium", id: "4" },
+      { title: "Aluminium 1mm Medium", id: "5" },
+      { title: "Aluminium 1mm Good", id: "6" },
+      { title: "Aluminium 1mm Fine", id: "7" },
+    ],
   },
-  showSequenceNumbers: {
-    title: "Use sequence numbers",
-    description: "Use sequence numbers for each block of outputted code.",
-    group: "formats",
-    type: "boolean",
-    value: true,
-    scope: "post",
-  },
-  sequenceNumberStart: {
-    title: "Start sequence number",
-    description: "The number at which to start the sequence numbers.",
-    group: "formats",
-    type: "integer",
-    value: 10,
-    scope: "post",
-  },
-  sequenceNumberIncrement: {
-    title: "Sequence number increment",
-    description:
-      "The amount by which the sequence number is incremented by in each block.",
-    group: "formats",
-    type: "integer",
-    value: 5,
-    scope: "post",
-  },
-  allowHeadSwitches: {
-    title: "Allow head switches",
-    description:
-      "Enable to output code to allow heads to be manually switched for piercing and cutting.",
-    group: "preferences",
-    type: "boolean",
-    value: true,
-    scope: "post",
-  },
-  useRetracts: {
-    title: "Use retracts",
-    description:
-      "Output retracts, otherwise only output part contours for importing into a third-party jet application.",
-    group: "homePositions",
-    type: "boolean",
-    value: true,
-    scope: "post",
-  },
+  // seperateWordsWithSpace determines wether white space is put between codes and arguments on the same line
   separateWordsWithSpace: {
-    title: "Separate words with space",
-    description: "Adds spaces between words if 'yes' is selected.",
-    group: "formats",
+    title: "Separate word with space",
+    description:
+      "Indicates wether spaces are inserted between words and arguments",
+    group: "formatting",
     type: "boolean",
     value: true,
-    scope: "post",
   },
 };
 
-// wcs definiton
+// work coordinate system definition
 wcsDefinitions = {
   useZeroOffset: false,
   wcs: [{ name: "Standard", format: "#", range: [1, 1] }],
 };
 
+// gcode and mcode formats
 var gFormat = createFormat({ prefix: "G", decimals: 0 });
 var mFormat = createFormat({ prefix: "M", decimals: 0 });
 
+// data formats (coordinate,feed,time)
 var xyzFormat = createFormat({ decimals: unit == MM ? 3 : 4 });
 var feedFormat = createFormat({ decimals: unit == MM ? 1 : 2 });
 var secFormat = createFormat({ decimals: 3, forceDecimal: true }); // seconds - range 0.001-1000
@@ -125,11 +93,10 @@ var gUnitModal = createModal({}, gFormat); // modal group 6 // G20-21
 
 // collected state
 var sequenceNumber;
-var currentWorkOffset;
 var split = false;
 
 /**
-  Writes the specified block.
+  Writes code block of arguments passed
 */
 function writeBlock() {
   if (getProperty("showSequenceNumbers")) {
@@ -140,17 +107,16 @@ function writeBlock() {
   }
 }
 
-function formatComment(text) {
-  return "(" + String(text).replace(/[()]/g, "") + ")";
+/**
+  Writes a comment line
+*/
+function writeComment(text) {
+  writeln("(" + String(text).replace(/[()]/g, "") + ")");
 }
 
 /**
-  Output a comment.
-*/
-function writeComment(text) {
-  writeln(formatComment(text));
-}
-
+  sets word separation, units, and feed-rate , and cutting speed based on material selected
+ */
 function onOpen() {
   if (!getProperty("separateWordsWithSpace")) {
     setWordSeparator("");
@@ -158,53 +124,45 @@ function onOpen() {
 
   sequenceNumber = getProperty("sequenceNumberStart");
 
-  if (programName) {
-    writeComment(programName);
-  }
-  if (programComment) {
-    writeComment(programComment);
-  }
+  writeBlock("G131", "10");
 
-  // dump machine configuration
-  var vendor = machineConfiguration.getVendor();
-  var model = machineConfiguration.getModel();
-  var description = machineConfiguration.getDescription();
-
-  if (getProperty("writeMachine") && (vendor || model || description)) {
-    writeComment(localize("Machine"));
-    if (vendor) {
-      writeComment("  " + localize("vendor") + ": " + vendor);
-    }
-    if (model) {
-      writeComment("  " + localize("model") + ": " + model);
-    }
-    if (description) {
-      writeComment("  " + localize("description") + ": " + description);
-    }
-  }
-
-  if (hasGlobalParameter("material")) {
-    writeComment("MATERIAL = " + getGlobalParameter("material"));
-  }
-
-  if (hasGlobalParameter("material-hardness")) {
-    writeComment(
-      "MATERIAL HARDNESS = " + getGlobalParameter("material-hardness")
-    );
-  }
-
-  {
-    // stock - workpiece
-    var workpiece = getWorkpiece();
-    var delta = Vector.diff(workpiece.upper, workpiece.lower);
-    if (delta.isNonZero()) {
-      writeComment(
-        "THICKNESS = " + xyzFormat.format(workpiece.upper.z - workpiece.lower.z)
-      );
-    }
+  writeComment(
+    "MATERIAL = " +
+      properties.cutMaterial.values[getProperty("cutMaterial") - 1].title
+  );
+  switch (getProperty("cutMaterial")) {
+    case "1": // alu 8mm goood
+      writeBlock("F70");
+      writeBlock("M200", "1.5");
+      break;
+    case "2": // alu 6mm rough
+      writeBlock("F188");
+      writeBlock("M200", "1.5");
+      break;
+    case "3": // alu 6mm medium
+      writeBlock("F150");
+      writeBlock("M200", "1.5");
+      break;
+    case "4": // alu 3mm medium
+      writeBlock("F321");
+      writeBlock("M200", "1.5");
+      break;
+    case "5": // alu 1mm medium
+      writeBlock("F1140");
+      writeBlock("M200", "1");
+      break;
+    case "6": // alu 1mm good
+      writeBlock("F760");
+      writeBlock("M200", "1");
+      break;
+    case "7": // alu 1mm fine
+      writeBlock("F290");
+      writeBlock("M200", "1.5");
+      break;
+    default:
+      error("Unknown material provided");
   }
 
-  // absolute coordinates and feed per min
   writeBlock(gAbsIncModal.format(90), "; absolute coordinates");
 
   switch (unit) {
@@ -215,10 +173,6 @@ function onOpen() {
       writeBlock(gUnitModal.format(21), "; units millimeters");
       break;
   }
-}
-
-function onComment(message) {
-  writeComment(message);
 }
 
 /** Force output of X, Y, and Z. */
@@ -241,82 +195,16 @@ function onSection() {
     tool.number != getPreviousSection().getTool().number;
 
   var retracted = false; // specifies that the tool has been retracted to the safe plane
-  var newWorkOffset =
-    isFirstSection() ||
-    getPreviousSection().workOffset != currentSection.workOffset; // work offset changes
-  var newWorkPlane =
-    isFirstSection() ||
-    !isSameDirection(
-      getPreviousSection().getGlobalFinalToolAxis(),
-      currentSection.getGlobalInitialToolAxis()
-    );
-
-  writeln("");
-
-  if (hasParameter("operation-comment")) {
-    var comment = getParameter("operation-comment");
-    if (comment) {
-      writeComment(comment);
-    }
-  }
-
-  if (insertToolCall) {
-    retracted = true;
-    onCommand(COMMAND_COOLANT_OFF);
-
-    switch (tool.type) {
-      case TOOL_WATER_JET:
-        writeComment("Waterjet cutting.");
-        break;
-      case TOOL_LASER_CUTTER:
-        writeComment("Laser cutting");
-        break;
-      case TOOL_PLASMA_CUTTER:
-        writeComment("Plasma cutting");
-        break;
-      default:
-        error(localize("The CNC does not support the required tool."));
-        return;
-    }
-    writeln("");
-
-    writeComment("tool.jetDiameter = " + xyzFormat.format(tool.jetDiameter));
-    writeComment("tool.jetDistance = " + xyzFormat.format(tool.jetDistance));
-    writeln("");
-
-    switch (currentSection.jetMode) {
-      case JET_MODE_THROUGH:
-        writeComment("THROUGH CUTTING");
-        break;
-      case JET_MODE_ETCHING:
-        writeComment("ETCH CUTTING");
-        break;
-      case JET_MODE_VAPORIZE:
-        writeComment("VAPORIZE CUTTING");
-        break;
-      default:
-        error(localize("Unsupported cutting mode."));
-        return;
-    }
-    writeComment("QUALITY = " + currentSection.quality);
-
-    if (tool.comment) {
-      writeComment(tool.comment);
-    }
-    writeln("");
-  }
 
   forceXYZ();
 
-  {
-    // pure 3D
-    var remaining = currentSection.workPlane;
-    if (!isSameDirection(remaining.forward, new Vector(0, 0, 1))) {
-      error(localize("Tool orientation is not supported."));
-      return;
-    }
-    setRotation(remaining);
+  // pure 3D
+  var remaining = currentSection.workPlane;
+  if (!isSameDirection(remaining.forward, new Vector(0, 0, 1))) {
+    error(localize("Tool orientation is not supported."));
+    return;
   }
+  setRotation(remaining);
 
   forceAny();
 
@@ -360,11 +248,11 @@ function onDwell(seconds) {
     warning(localize("Dwelling time is out of range."));
   }
   seconds = clamp(0.001, seconds, 99999.999);
-  writeBlock(gFormat.format(4), "X" + secFormat.format(seconds));
-}
-
-function onCycle() {
-  onError("Drilling is not supported by CNC.");
+  writeBlock(
+    gFormat.format(4),
+    "X" + secFormat.format(seconds),
+    "; dwell for piercing"
+  );
 }
 
 var pendingRadiusCompensation = -1;
@@ -380,7 +268,8 @@ var cuttingSequence = "";
 
 function onParameter(name, value) {
   if (name == "action" && value == "pierce") {
-    writeBlock("G04", "2");
+    onDwell(2);
+    writeln("");
   } else if (name == "shapeArea") {
     shapeArea = value;
     writeComment("SHAPE AREA = " + xyzFormat.format(shapeArea));
@@ -421,16 +310,13 @@ function setDeviceMode(enable) {
     deviceOn = enable;
     if (enable) {
       writeln("");
-      writeBlock("F1200");
-      writeBlock("M100", "; Start cutting");
+      writeBlock("M1100", "; Start cutting");
+      writeBlock("M1102");
     } else {
-      writeBlock("M101", " ; Stop cutting");
+      writeBlock("M1103");
+      writeBlock("M1101", " ; Stop cutting");
     }
   }
-}
-
-function onPower(power) {
-  setDeviceMode(power);
 }
 
 function onRapid(_x, _y, _z) {
@@ -651,7 +537,7 @@ function onClose() {
   onCommand(COMMAND_COOLANT_OFF);
 
   onImpliedCommand(COMMAND_END);
-  writeBlock(mFormat.format(30)); // stop program
+  writeBlock(gFormat.format(40)); // stop program
 }
 
 function setProperty(property, value) {
