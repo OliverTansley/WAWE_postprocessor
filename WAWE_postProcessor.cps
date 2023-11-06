@@ -124,8 +124,6 @@ function onOpen() {
 
   sequenceNumber = getProperty("sequenceNumberStart");
 
-  writeBlock("G131", "10");
-
   writeComment(
     "MATERIAL = " +
       properties.cutMaterial.values[getProperty("cutMaterial") - 1].title
@@ -162,6 +160,8 @@ function onOpen() {
     default:
       error("Unknown material provided");
   }
+
+  writeBlock("G131", "10");
 
   writeBlock(gAbsIncModal.format(90), "; absolute coordinates");
 
@@ -253,6 +253,7 @@ function onDwell(seconds) {
     "X" + secFormat.format(seconds),
     "; dwell for piercing"
   );
+  writeComment("Movement commands");
 }
 
 var pendingRadiusCompensation = -1;
@@ -269,7 +270,6 @@ var cuttingSequence = "";
 function onParameter(name, value) {
   if (name == "action" && value == "pierce") {
     onDwell(2);
-    writeln("");
   } else if (name == "shapeArea") {
     shapeArea = value;
     writeComment("SHAPE AREA = " + xyzFormat.format(shapeArea));
@@ -301,6 +301,10 @@ function onParameter(name, value) {
     }
     cuttingSequence = value;
   }
+}
+
+function onPower(power) {
+  setDeviceMode(power);
 }
 
 var deviceOn = false;
