@@ -197,7 +197,43 @@ function forceAny() {
 }
 
 /***/
-function onSection() {}
+function onSection() {
+  forceAny();
+
+  split = false;
+  if (getProperty("useRetracts")) {
+    var initialPosition = getFramePosition(currentSection.getInitialPosition());
+
+    if (insertToolCall || retracted) {
+      gMotionModal.reset();
+
+      if (!machineConfiguration.isHeadConfiguration()) {
+        writeBlock(
+          gAbsIncModal.format(90),
+          gMotionModal.format(0),
+          xOutput.format(initialPosition.x),
+          yOutput.format(initialPosition.y)
+        );
+      } else {
+        writeBlock(
+          gAbsIncModal.format(90),
+          gMotionModal.format(0),
+          xOutput.format(initialPosition.x),
+          yOutput.format(initialPosition.y)
+        );
+      }
+    } else {
+      writeBlock(
+        gAbsIncModal.format(90),
+        gMotionModal.format(0),
+        xOutput.format(initialPosition.x),
+        yOutput.format(initialPosition.y)
+      );
+    }
+  } else {
+    split = true;
+  }
+}
 
 /**
  * Outputs dwell statement
