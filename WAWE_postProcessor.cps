@@ -89,7 +89,7 @@ wcsDefinitions = {
 };
 
 // gcode and mcode formats
-var gFormat = createFormat({ prefix: "G0", decimals: 0 });
+var gFormat = createFormat({ prefix: "G", decimals: 0 });
 var mFormat = createFormat({ prefix: "M", decimals: 0 });
 
 // data formats (coordinate,feed,time)
@@ -187,15 +187,6 @@ function onOpen() {
   writeBlock("S0.9"); //kerf width ??
 
   writeBlock(gAbsIncModal.format(90));
-
-  switch (unit) {
-    case IN:
-      writeBlock(gUnitModal.format(20));
-      break;
-    case MM:
-      writeBlock(gUnitModal.format(21));
-      break;
-  }
 }
 
 /** Force output of X, Y, and Z. */
@@ -221,10 +212,7 @@ function onDwell(seconds) {
     warning(localize("Dwelling time is out of range."));
   }
   seconds = clamp(0.001, seconds, 99999.999);
-  writeBlock(
-    gFormat.format(4),
-    secFormat.format(seconds)
-  );
+  writeBlock("G04", secFormat.format(seconds));
   writeBlock("M1102");
 }
 
@@ -288,7 +276,7 @@ function setDeviceMode(enable) {
       writeBlock("M1100");
     } else {
       writeBlock("M1103");
-      writeBlock("M1101";
+      writeBlock("M1101");
       if (getProperty("pauseDelimited")) {
         writeBlock(mFormat.format(999));
       }
@@ -325,7 +313,7 @@ function onRapid(_x, _y, _z) {
       );
       return;
     }
-    writeBlock(gMotionModal.format(0), x, y);
+    writeBlock("G0", x, y);
     feedOutput.reset();
   }
 }
@@ -361,25 +349,25 @@ function onLinear(_x, _y, _z, feed) {
       switch (radiusCompensation) {
         case RADIUS_COMPENSATION_LEFT:
           writeBlock(gFormat.format(41));
-          writeBlock(gMotionModal.format(8), gMotionModal.format(1), x, y, f);
+          writeBlock("G08", "G01", x, y, f);
           break;
         case RADIUS_COMPENSATION_RIGHT:
           writeBlock(gFormat.format(42));
-          writeBlock(gMotionModal.format(8), gMotionModal.format(1), x, y, f);
+          writeBlock("G08", "G01", x, y, f);
           break;
         default:
           writeBlock(gFormat.format(40));
-          writeBlock(gMotionModal.format(8), gMotionModal.format(1), x, y, f);
+          writeBlock("G08", "G01", x, y, f);
       }
     } else {
-      writeBlock(gMotionModal.format(8), gMotionModal.format(1), x, y, f);
+      writeBlock("G08", "G01", x, y, f);
     }
   } else if (f) {
     if (getNextRecord().isMotion()) {
       // try not to output feed without motion
       feedOutput.reset(); // force feed on next line
     } else {
-      writeBlock(gMotionModal.format(8), gMotionModal.format(1), f);
+      writeBlock("G08", "G01", f);
     }
   }
 }
@@ -441,11 +429,11 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
     switch (getCircularPlane()) {
       case PLANE_XY:
         writeBlock(
-          gMotionModal.format(8),
+          "G08",
           gMotionModal.format(clockwise ? 2 : 3),
           xOutput.format(x),
-          iOutput.format(cx - start.x, 0),
-          jOutput.format(cy - start.y, 0),
+          iOutput.format(cx - start.x, 1),
+          jOutput.format(cy - start.y, 1),
           matFeed
         );
         break;
@@ -456,12 +444,12 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
     switch (getCircularPlane()) {
       case PLANE_XY:
         writeBlock(
-          gMotionModal.format(8),
+          "G08",
           gMotionModal.format(clockwise ? 2 : 3),
           xOutput.format(x),
           yOutput.format(y),
-          iOutput.format(cx - start.x, 0),
-          jOutput.format(cy - start.y, 0),
+          iOutput.format(cx - start.x, 1),
+          jOutput.format(cy - start.y, 1),
           matFeed
         );
         break;
