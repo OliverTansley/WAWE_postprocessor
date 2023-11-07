@@ -71,6 +71,15 @@ properties = {
     type: "boolean",
     value: false,
   },
+  useRetracts: {
+    title: "Use retracts",
+    description:
+      "Output retracts, otherwise only output part contours for importing into a third-party jet application.",
+    group: "homePositions",
+    type: "boolean",
+    value: true,
+    scope: "post",
+  },
 };
 
 // work coordinate system definition
