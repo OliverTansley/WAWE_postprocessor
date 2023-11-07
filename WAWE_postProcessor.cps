@@ -198,6 +198,119 @@ function forceAny() {
 
 /***/
 function onSection() {
+  var insertToolCall =
+    isFirstSection() ||
+    (currentSection.getForceToolChange &&
+      currentSection.getForceToolChange()) ||
+    tool.number != getPreviousSection().getTool().number;
+
+  var retracted = false; // specifies that the tool has been retracted to the safe plane
+  var newWorkOffset =
+    isFirstSection() ||
+    getPreviousSection().workOffset != currentSection.workOffset; // work offset changes
+  var newWorkPlane =
+    isFirstSection() ||
+    !isSameDirection(
+      getPreviousSection().getGlobalFinalToolAxis(),
+      currentSection.getGlobalInitialToolAxis()
+    );
+
+  writeln("");
+
+  if (hasParameter("operation-comment")) {
+    var comment = getParameter("operation-comment");
+    if (comment) {
+      writeComment(comment);
+    }
+  }
+
+  if (insertToolCall) {
+    retracted = true;
+    onCommand(COMMAND_COOLANT_OFF);
+
+    switch (tool.type) {
+      case TOOL_WATER_JET:
+        writeComment("Waterjet cutting.");
+        break;
+      case TOOL_LASER_CUTTER:
+        writeComment("Laser cutting");
+        break;
+      case TOOL_PLASMA_CUTTER:
+        writeComment("Plasma cutting");
+        break;
+      /*
+    case TOOL_MARKER:
+      writeComment("Marker");
+      break;
+    */
+      default:
+        error(localize("The CNC does not support the required tool."));
+        return;
+    }
+    writeln("");
+
+    writeComment("tool.jetDiameter = " + xyzFormat.format(tool.jetDiameter));
+    writeComment("tool.jetDistance = " + xyzFormat.format(tool.jetDistance));
+    writeln("");
+
+    switch (currentSection.jetMode) {
+      case JET_MODE_THROUGH:
+        writeComment("THROUGH CUTTING");
+        break;
+      case JET_MODE_ETCHING:
+        writeComment("ETCH CUTTING");
+        break;
+      case JET_MODE_VAPORIZE:
+        writeComment("VAPORIZE CUTTING");
+        break;
+      default:
+        error(localize("Unsupported cutting mode."));
+        return;
+    }
+    writeComment("QUALITY = " + currentSection.quality);
+
+    if (tool.comment) {
+      writeComment(tool.comment);
+    }
+    writeln("");
+  }
+
+  /*
+  // wcs
+  if (insertToolCall) { // force work offset when changing tool
+    currentWorkOffset = undefined;
+  }
+
+  if (currentSection.workOffset != currentWorkOffset) {
+    writeBlock(currentSection.wcs);
+    currentWorkOffset = currentSection.workOffset;
+  }
+ */
+
+  forceXYZ();
+
+  {
+    // pure 3D
+    var remaining = currentSection.workPlane;
+    if (!isSameDirection(remaining.forward, new Vector(0, 0, 1))) {
+      error(localize("Tool orientation is not supported."));
+      return;
+    }
+    setRotation(remaining);
+  }
+
+  /*
+  // set coolant after we have positioned at Z
+  if (false) {
+    var c = mapCoolantTable.lookup(tool.coolant);
+    if (c) {
+      writeBlock(mFormat.format(c));
+    } else {
+      warning(localize("Coolant not supported."));
+    }
+  }
+*/
+
   forceAny();
 
   split = false;
