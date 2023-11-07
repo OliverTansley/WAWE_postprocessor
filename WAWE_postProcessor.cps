@@ -20,7 +20,7 @@ legal = "";
 certificationLevel = 2;
 minimumRevision = 45702;
 longDescription = "New post processor for the IcutWater waterjet";
-extension = "nc";
+extension = "CNC";
 setCodePage("ascii");
 capabilities = CAPABILITY_JET;
 tolerance = spatial(0.002, MM);
@@ -89,7 +89,7 @@ wcsDefinitions = {
 };
 
 // gcode and mcode formats
-var gFormat = createFormat({ prefix: "G", decimals: 0 });
+var gFormat = createFormat({ prefix: "G0", decimals: 0 });
 var mFormat = createFormat({ prefix: "M", decimals: 0 });
 
 // data formats (coordinate,feed,time)
@@ -135,6 +135,7 @@ function writeComment(text) {
 /**
   sets word separation, units, and feed-rate , and cutting speed based on material selected
  */
+var matFeed = "";
 function onOpen() {
   if (!getProperty("separateWordsWithSpace")) {
     setWordSeparator("");
@@ -142,37 +143,40 @@ function onOpen() {
 
   sequenceNumber = getProperty("sequenceNumberStart");
 
-  writeComment(
-    "MATERIAL = " +
-      properties.cutMaterial.values[getProperty("cutMaterial") - 1].title
-  );
   switch (getProperty("cutMaterial")) {
     case "1": // alu 8mm goood
       writeBlock("F70");
+      matFeed = "F70";
       writeBlock("M200", "1.5");
       break;
     case "2": // alu 6mm rough
       writeBlock("F188");
+      matFeed = "F188";
       writeBlock("M200", "1.5");
       break;
     case "3": // alu 6mm medium
       writeBlock("F150");
+      matFeed = "F150";
       writeBlock("M200", "1.5");
       break;
     case "4": // alu 3mm medium
       writeBlock("F321");
+      matFeed = "F321";
       writeBlock("M200", "1.5");
       break;
     case "5": // alu 1mm medium
       writeBlock("F1140");
+      matFeed = "F1140";
       writeBlock("M200", "1");
       break;
     case "6": // alu 1mm good
       writeBlock("F760");
+      matFeed = "F760";
       writeBlock("M200", "1");
       break;
     case "7": // alu 1mm fine
       writeBlock("F290");
+      matFeed = "F290";
       writeBlock("M200", "1.5");
       break;
     default:
@@ -180,15 +184,16 @@ function onOpen() {
   }
 
   writeBlock("G131", "10"); //acceleration 10mm/s^2
+  writeBlock("S0.9"); //kerf width ??
 
-  writeBlock(gAbsIncModal.format(90), "; absolute coordinates");
+  writeBlock(gAbsIncModal.format(90));
 
   switch (unit) {
     case IN:
-      writeBlock(gUnitModal.format(20), "; units inches");
+      writeBlock(gUnitModal.format(20));
       break;
     case MM:
-      writeBlock(gUnitModal.format(21), "; units millimeters");
+      writeBlock(gUnitModal.format(21));
       break;
   }
 }
@@ -218,10 +223,9 @@ function onDwell(seconds) {
   seconds = clamp(0.001, seconds, 99999.999);
   writeBlock(
     gFormat.format(4),
-    secFormat.format(seconds),
-    "; dwell for piercing"
+    secFormat.format(seconds)
   );
-  writeComment("Movement commands");
+  writeBlock("M1102");
 }
 
 var pendingRadiusCompensation = -1;
@@ -281,14 +285,12 @@ function setDeviceMode(enable) {
   if (enable != deviceOn) {
     deviceOn = enable;
     if (enable) {
-      writeln("");
-      writeBlock("M1100", "; Start cutting");
-      writeBlock("M1102");
+      writeBlock("M1100");
     } else {
       writeBlock("M1103");
-      writeBlock("M1101", " ; Stop cutting");
+      writeBlock("M1101";
       if (getProperty("pauseDelimited")) {
-        writeBlock(mFormat.format(999), "; PRESS ENTER TO CONTINUE");
+        writeBlock(mFormat.format(999));
       }
     }
   }
@@ -352,32 +354,32 @@ function onLinear(_x, _y, _z, feed) {
   }
   var x = xOutput.format(_x);
   var y = yOutput.format(_y);
-  var f = feedOutput.format(feed);
+  var f = matFeed;
   if (x || y) {
     if (pendingRadiusCompensation >= 0) {
       pendingRadiusCompensation = -1;
       switch (radiusCompensation) {
         case RADIUS_COMPENSATION_LEFT:
           writeBlock(gFormat.format(41));
-          writeBlock(gMotionModal.format(1), x, y, f);
+          writeBlock(gMotionModal.format(8), gMotionModal.format(1), x, y, f);
           break;
         case RADIUS_COMPENSATION_RIGHT:
           writeBlock(gFormat.format(42));
-          writeBlock(gMotionModal.format(1), x, y, f);
+          writeBlock(gMotionModal.format(8), gMotionModal.format(1), x, y, f);
           break;
         default:
           writeBlock(gFormat.format(40));
-          writeBlock(gMotionModal.format(1), x, y, f);
+          writeBlock(gMotionModal.format(8), gMotionModal.format(1), x, y, f);
       }
     } else {
-      writeBlock(gMotionModal.format(1), x, y, f);
+      writeBlock(gMotionModal.format(8), gMotionModal.format(1), x, y, f);
     }
   } else if (f) {
     if (getNextRecord().isMotion()) {
       // try not to output feed without motion
       feedOutput.reset(); // force feed on next line
     } else {
-      writeBlock(gMotionModal.format(1), f);
+      writeBlock(gMotionModal.format(8), gMotionModal.format(1), f);
     }
   }
 }
@@ -439,11 +441,12 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
     switch (getCircularPlane()) {
       case PLANE_XY:
         writeBlock(
+          gMotionModal.format(8),
           gMotionModal.format(clockwise ? 2 : 3),
           xOutput.format(x),
           iOutput.format(cx - start.x, 0),
           jOutput.format(cy - start.y, 0),
-          feedOutput.format(feed)
+          matFeed
         );
         break;
       default:
@@ -453,12 +456,13 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
     switch (getCircularPlane()) {
       case PLANE_XY:
         writeBlock(
+          gMotionModal.format(8),
           gMotionModal.format(clockwise ? 2 : 3),
           xOutput.format(x),
           yOutput.format(y),
           iOutput.format(cx - start.x, 0),
           jOutput.format(cy - start.y, 0),
-          feedOutput.format(feed)
+          matFeed
         );
         break;
       default:
@@ -494,12 +498,10 @@ function onSectionEnd() {
  Terminate program
  */
 function onClose() {
-  writeln("");
-
   onCommand(COMMAND_COOLANT_OFF);
 
   onImpliedCommand(COMMAND_END);
-  writeBlock(gFormat.format(40)); // stop program
+  writeBlock("M02"); // stop program
 }
 
 /**
