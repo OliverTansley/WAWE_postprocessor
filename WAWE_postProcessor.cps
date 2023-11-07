@@ -206,68 +206,7 @@ function forceAny() {
 }
 
 /***/
-function onSection() {
-  var insertToolCall =
-    isFirstSection() ||
-    (currentSection.getForceToolChange &&
-      currentSection.getForceToolChange()) ||
-    tool.number != getPreviousSection().getTool().number;
-
-  var retracted = false; // specifies that the tool has been retracted to the safe plane
-
-  if (insertToolCall) {
-    retracted = true;
-    onCommand(COMMAND_COOLANT_OFF);
-  }
-
-  forceXYZ();
-
-  {
-    // pure 3D
-    var remaining = currentSection.workPlane;
-    if (!isSameDirection(remaining.forward, new Vector(0, 0, 1))) {
-      error(localize("Tool orientation is not supported."));
-      return;
-    }
-    setRotation(remaining);
-  }
-
-  forceAny();
-
-  split = false;
-  if (getProperty("useRetracts")) {
-    var initialPosition = getFramePosition(currentSection.getInitialPosition());
-
-    if (insertToolCall || retracted) {
-      gMotionModal.reset();
-
-      if (!machineConfiguration.isHeadConfiguration()) {
-        writeBlock(
-          gAbsIncModal.format(90),
-          gMotionModal.format(0),
-          xOutput.format(initialPosition.x),
-          yOutput.format(initialPosition.y)
-        );
-      } else {
-        writeBlock(
-          gAbsIncModal.format(90),
-          gMotionModal.format(0),
-          xOutput.format(initialPosition.x),
-          yOutput.format(initialPosition.y)
-        );
-      }
-    } else {
-      writeBlock(
-        gAbsIncModal.format(90),
-        gMotionModal.format(0),
-        xOutput.format(initialPosition.x),
-        yOutput.format(initialPosition.y)
-      );
-    }
-  } else {
-    split = true;
-  }
-}
+function onSection() {}
 
 /**
  * Outputs dwell statement
@@ -359,13 +298,13 @@ function setDeviceMode(enable) {
   Performs rapid movement G0 command
 */
 function onRapid(_x, _y, _z) {
-  if (
-    !getProperty("useRetracts") &&
-    (movement == MOVEMENT_RAPID || movement == MOVEMENT_HIGH_FEED)
-  ) {
-    doSplit();
-    return;
-  }
+  // if (
+  //   !getProperty("useRetracts") &&
+  //   (movement == MOVEMENT_RAPID || movement == MOVEMENT_HIGH_FEED)
+  // ) {
+  //   doSplit();
+  //   return;
+  // }
 
   if (split) {
     split = false;
@@ -393,17 +332,17 @@ function onRapid(_x, _y, _z) {
   performs G1 linear movement command
  */
 function onLinear(_x, _y, _z, feed) {
-  if (
-    !getProperty("useRetracts") &&
-    (movement == MOVEMENT_RAPID || movement == MOVEMENT_HIGH_FEED)
-  ) {
-    doSplit();
-    return;
-  }
+  // if (
+  //   !getProperty("useRetracts") &&
+  //   (movement == MOVEMENT_RAPID || movement == MOVEMENT_HIGH_FEED)
+  // ) {
+  //   doSplit();
+  //   return;
+  // }
 
-  if (split) {
-    resumeFromSplit(feed);
-  }
+  // if (split) {
+  //   resumeFromSplit(feed);
+  // }
 
   // at least one axis is required
   if (pendingRadiusCompensation >= 0) {
