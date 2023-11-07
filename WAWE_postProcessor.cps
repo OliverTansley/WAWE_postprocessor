@@ -62,13 +62,14 @@ properties = {
     type: "boolean",
     value: true,
   },
+  // pauseDelimited determines wether the cutter should pause between profiles to allow for easy removal
   pauseDelimited: {
     title: "Pause between profiles",
     description:
       "If true the cutter will wait between profiles to allow safe removal of parts, press enter to move onto the next profile",
     group: "Operation",
     type: "boolean",
-    value: true,
+    value: false,
   },
 };
 
@@ -198,11 +199,7 @@ function forceAny() {
 /**
  Optionally adds a pause between all cutting profiles
  */
-function onSection() {
-  if (getProperty("pauseDelimited")) {
-    writeBlock(mFormat.format(999), "; PRESS ENTER TO CONTINUE");
-  }
-}
+function onSection() {}
 
 /**
  * Outputs dwell statement
@@ -270,6 +267,9 @@ function onPower(power) {
 }
 
 var deviceOn = false;
+/**
+ Toggles device from on and off
+ */
 function setDeviceMode(enable) {
   if (enable != deviceOn) {
     deviceOn = enable;
@@ -280,10 +280,16 @@ function setDeviceMode(enable) {
     } else {
       writeBlock("M1103");
       writeBlock("M1101", " ; Stop cutting");
+      if (getProperty("pauseDelimited")) {
+        writeBlock(mFormat.format(999), "; PRESS ENTER TO CONTINUE");
+      }
     }
   }
 }
 
+/*
+  Performs rapid movement G0 command
+*/
 function onRapid(_x, _y, _z) {
   if (
     !getProperty("useRetracts") &&
