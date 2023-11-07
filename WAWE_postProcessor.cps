@@ -196,9 +196,7 @@ function forceAny() {
   feedOutput.reset();
 }
 
-/**
- Optionally adds a pause between all cutting profiles
- */
+/***/
 function onSection() {}
 
 /**
@@ -211,7 +209,7 @@ function onDwell(seconds) {
   seconds = clamp(0.001, seconds, 99999.999);
   writeBlock(
     gFormat.format(4),
-    "X" + secFormat.format(seconds),
+    secFormat.format(seconds),
     "; dwell for piercing"
   );
   writeComment("Movement commands");
@@ -321,6 +319,9 @@ function onRapid(_x, _y, _z) {
   }
 }
 
+/**
+  performs G1 linear movement command
+ */
 function onLinear(_x, _y, _z, feed) {
   if (
     !getProperty("useRetracts") &&
@@ -393,6 +394,9 @@ function resumeFromSplit(feed) {
   }
 }
 
+/**
+ * performs G02 or G03 circular movement
+ */
 function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
   if (
     !getProperty("useRetracts") &&
