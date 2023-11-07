@@ -430,6 +430,7 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
       case PLANE_XY:
         writeBlock(
           "G08",
+          clockwise ? "G02" : "G03",
           gMotionModal.format(clockwise ? 2 : 3),
           xOutput.format(x),
           iOutput.format(cx - start.x, 1),
@@ -445,6 +446,7 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
       case PLANE_XY:
         writeBlock(
           "G08",
+          clockwise ? "G02" : "G03",
           gMotionModal.format(clockwise ? 2 : 3),
           xOutput.format(x),
           yOutput.format(y),
