@@ -32,7 +32,7 @@ maximumCircularRadius = spatial(1000, MM);
 minimumCircularSweep = toRad(0.01);
 maximumCircularSweep = toRad(180);
 allowHelicalMoves = false;
-allowedCircularPlanes = undefined; // allow any circular motion
+allowedCircularPlanes = undefined;
 
 // User defined properties
 properties = {
@@ -107,7 +107,6 @@ var jOutput = createReferenceVariable({ prefix: "J" }, xyzFormat);
 
 var gMotionModal = createModal({}, gFormat); // modal group 1 // G0-G3, ...
 var gAbsIncModal = createModal({}, gFormat); // modal group 3 // G90-91
-var gUnitModal = createModal({}, gFormat); // modal group 6 // G20-21
 
 // collected state
 var sequenceNumber;
@@ -201,7 +200,8 @@ function forceAny() {
   feedOutput.reset();
 }
 
-/***/
+/**
+ */
 function onSection() {}
 
 /**
@@ -212,7 +212,7 @@ function onDwell(seconds) {
     warning(localize("Dwelling time is out of range."));
   }
   seconds = clamp(0.001, seconds, 99999.999);
-  writeBlock("G04", secFormat.format(seconds));
+  writeBlock("G04", seconds);
   writeBlock("M1102");
 }
 
@@ -349,25 +349,25 @@ function onLinear(_x, _y, _z, feed) {
       switch (radiusCompensation) {
         case RADIUS_COMPENSATION_LEFT:
           writeBlock(gFormat.format(41));
-          writeBlock("G08", "G01", x, y, f);
+          writeBlock("G01", x, y, f);
           break;
         case RADIUS_COMPENSATION_RIGHT:
           writeBlock(gFormat.format(42));
-          writeBlock("G08", "G01", x, y, f);
+          writeBlock("G01", x, y, f);
           break;
         default:
           writeBlock(gFormat.format(40));
-          writeBlock("G08", "G01", x, y, f);
+          writeBlock("G01", x, y, f);
       }
     } else {
-      writeBlock("G08", "G01", x, y, f);
+      writeBlock("G01", x, y, f);
     }
   } else if (f) {
     if (getNextRecord().isMotion()) {
       // try not to output feed without motion
       feedOutput.reset(); // force feed on next line
     } else {
-      writeBlock("G08", "G01", f);
+      writeBlock("G01", f);
     }
   }
 }
@@ -429,9 +429,7 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
     switch (getCircularPlane()) {
       case PLANE_XY:
         writeBlock(
-          "G08",
           clockwise ? "G02" : "G03",
-          gMotionModal.format(clockwise ? 2 : 3),
           xOutput.format(x),
           iOutput.format(cx - start.x, 1),
           jOutput.format(cy - start.y, 1),
@@ -445,9 +443,7 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
     switch (getCircularPlane()) {
       case PLANE_XY:
         writeBlock(
-          "G08",
           clockwise ? "G02" : "G03",
-          gMotionModal.format(clockwise ? 2 : 3),
           xOutput.format(x),
           yOutput.format(y),
           iOutput.format(cx - start.x, 1),
