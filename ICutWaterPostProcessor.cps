@@ -185,7 +185,7 @@ function onOpen() {
   writeBlock("G131", "10"); //acceleration 10mm/s^2
   writeBlock("S0.9"); //kerf width ??
 
-  writeBlock(gAbsIncModal.format(90));
+  writeBlock("G90");
 }
 
 /** Force output of X, Y, and Z. */
