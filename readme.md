@@ -6,7 +6,8 @@ This post processor is designed for the ['icutWater Eco 2' waterjet.](https://em
 
 ## Usage
 
-**POST OPERATES IN ABSOLUTE COORDINATES** This means once the cutting position is selected you **MUST** set this as the new home reference point which is found in kr8 drives menu labelled 'set 0 position' make sure this stays ticked.
+\* **POST OPERATES IN ABSOLUTE COORDINATES** \*
+This means once the cutting position is selected you **MUST** set this as the new home reference point which is found in kr8 drives menu labelled 'set 0 position' make sure this stays ticked.
 
 The post processor offers two unique options for ensuring the correct gcode is generated depending on desired functionality and cutting material.
 
