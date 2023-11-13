@@ -53,6 +53,20 @@ properties = {
       { title: "Aluminium 1mm Fine", id: "7" },
     ],
   },
+  overwriteFeedRate: {
+    title: "Feed Rate",
+    description: "How fast the cutting head moves",
+    group: "Material",
+    type: "string",
+    value: "",
+  },
+  overwriteAbrasiveRate: {
+    title: "Abrasive Rate",
+    description: "How much abrasive is provided",
+    group: "Material",
+    type: "string",
+    value: "",
+  },
   // separateWordsWithSpace determines wether white space is put between codes and arguments on the same line
   separateWordsWithSpace: {
     title: "Separate word with space",
@@ -99,7 +113,6 @@ var secFormat = createFormat({ decimals: 3, forceDecimal: true }); // seconds - 
 
 var xOutput = createVariable({ prefix: "X" }, xyzFormat);
 var yOutput = createVariable({ prefix: "Y" }, xyzFormat);
-var feedOutput = createVariable({ prefix: "F" }, feedFormat);
 
 // circular output
 var iOutput = createReferenceVariable({ prefix: "I" }, xyzFormat);
@@ -144,47 +157,48 @@ function onOpen() {
 
   switch (getProperty("cutMaterial")) {
     case "1": // alu 8mm goood
-      writeBlock("F70");
-      matFeed = "F70";
-      writeBlock("M200", "1.5");
+      matFeed = "70";
+      abrFeed = "1.5";
       break;
     case "2": // alu 6mm rough
-      writeBlock("F188");
-      matFeed = "F188";
-      writeBlock("M200", "1.5");
+      matFeed = "188";
+      abrFeed = "1.5";
       break;
     case "3": // alu 6mm medium
-      writeBlock("F150");
-      matFeed = "F150";
-      writeBlock("M200", "1.5");
+      matFeed = "150";
+      abrFeed = "1.5";
       break;
     case "4": // alu 3mm medium
-      writeBlock("F321");
-      matFeed = "F321";
-      writeBlock("M200", "1.5");
+      matFeed = "321";
+      abrFeed = "1.5";
       break;
     case "5": // alu 1mm medium
-      writeBlock("F1140");
-      matFeed = "F1140";
-      writeBlock("M200", "1");
+      matFeed = "1140";
+      abrFeed = "1";
       break;
     case "6": // alu 1mm good
-      writeBlock("F760");
-      matFeed = "F760";
-      writeBlock("M200", "1");
+      matFeed = "760";
+      abrFeed = "1";
       break;
     case "7": // alu 1mm fine
-      writeBlock("F290");
-      matFeed = "F290";
-      writeBlock("M200", "1.5");
+      matFeed = "290";
+      abrFeed = "1.5";
       break;
     default:
       error("Unknown material provided");
   }
-
+  if (getProperty("overwriteAbrasiveRate")) {
+    writeBlock("M200", getProperty("overwriteAbrasiveRate"));
+  } else {
+    writeBlock("M200", abrFeed);
+  }
+  if (getProperty("overwriteFeedRate")) {
+    writeBlock("F" + getProperty("overwriteFeedRate"));
+  } else {
+    writeBlock("F" + matFeed);
+  }
   writeBlock("G131", "10"); //acceleration 10mm/s^2
   writeBlock("S0.9"); //kerf width ??
-
   writeBlock("G90");
 }
 
@@ -197,11 +211,11 @@ function forceXYZ() {
 /** Force output of X, Y, Z, A, B, C, and F on next output. */
 function forceAny() {
   forceXYZ();
-  feedOutput.reset();
 }
 
 /**
- */
+  onSection runs between separate tool changes (not needed for this water-jet)
+*/
 function onSection() {}
 
 /**
@@ -228,15 +242,6 @@ var shapeArea = 0;
 function onParameter(name, value) {
   if (name == "action" && value == "pierce") {
     onDwell(2);
-  } else if (name == "shapeArea") {
-    shapeArea = value;
-    writeComment("SHAPE AREA = " + xyzFormat.format(shapeArea));
-  } else if (name == "shapePerimeter") {
-    shapePerimeter = value;
-    writeComment("SHAPE PERIMETER = " + xyzFormat.format(shapePerimeter));
-  } else if (name == "shapeSide") {
-    shapeSide = value;
-    writeComment("SHAPE SIDE = " + value);
   } else if (name == "beginSequence") {
     if (value == "piercing") {
       if (cuttingSequence != "piercing") {
@@ -261,24 +266,21 @@ function onParameter(name, value) {
   }
 }
 
-function onPower(power) {
-  setDeviceMode(power);
-}
-
-var deviceOn = false;
 /**
  Toggles device from on and off
  */
-function setDeviceMode(enable) {
+var deviceOn = false;
+function onPower(enable) {
   if (enable != deviceOn) {
     deviceOn = enable;
     if (enable) {
       writeBlock("M1100");
     } else {
       writeBlock("M1103");
+      onDwell(2);
       writeBlock("M1101");
       if (getProperty("pauseDelimited")) {
-        writeBlock(mFormat.format(999));
+        writeComment("INSERT PAUSE COMMAND HERE");
       }
     }
   }
@@ -288,14 +290,6 @@ function setDeviceMode(enable) {
   Performs rapid movement G0 command
 */
 function onRapid(_x, _y, _z) {
-  // if (
-  //   !getProperty("useRetracts") &&
-  //   (movement == MOVEMENT_RAPID || movement == MOVEMENT_HIGH_FEED)
-  // ) {
-  //   doSplit();
-  //   return;
-  // }
-
   if (split) {
     split = false;
     var start = getCurrentPosition();
@@ -314,7 +308,6 @@ function onRapid(_x, _y, _z) {
       return;
     }
     writeBlock("G0", x, y);
-    feedOutput.reset();
   }
 }
 
@@ -322,18 +315,6 @@ function onRapid(_x, _y, _z) {
   performs G1 linear movement command
  */
 function onLinear(_x, _y, _z, feed) {
-  // if (
-  //   !getProperty("useRetracts") &&
-  //   (movement == MOVEMENT_RAPID || movement == MOVEMENT_HIGH_FEED)
-  // ) {
-  //   doSplit();
-  //   return;
-  // }
-
-  // if (split) {
-  //   resumeFromSplit(feed);
-  // }
-
   // at least one axis is required
   if (pendingRadiusCompensation >= 0) {
     // ensure that we end at desired position when compensation is turned off
@@ -342,32 +323,24 @@ function onLinear(_x, _y, _z, feed) {
   }
   var x = xOutput.format(_x);
   var y = yOutput.format(_y);
-  var f = matFeed;
   if (x || y) {
     if (pendingRadiusCompensation >= 0) {
       pendingRadiusCompensation = -1;
       switch (radiusCompensation) {
         case RADIUS_COMPENSATION_LEFT:
           writeBlock(gFormat.format(41));
-          writeBlock("G01", x, y, f);
+          writeBlock("G01", x, y);
           break;
         case RADIUS_COMPENSATION_RIGHT:
           writeBlock(gFormat.format(42));
-          writeBlock("G01", x, y, f);
+          writeBlock("G01", x, y);
           break;
         default:
           writeBlock(gFormat.format(40));
-          writeBlock("G01", x, y, f);
+          writeBlock("G01", x, y);
       }
     } else {
-      writeBlock("G01", x, y, f);
-    }
-  } else if (f) {
-    if (getNextRecord().isMotion()) {
-      // try not to output feed without motion
-      feedOutput.reset(); // force feed on next line
-    } else {
-      writeBlock("G01", f);
+      writeBlock("G01", x, y);
     }
   }
 }
@@ -378,7 +351,6 @@ function doSplit() {
     gMotionModal.reset();
     xOutput.reset();
     yOutput.reset();
-    feedOutput.reset();
   }
 }
 
@@ -432,8 +404,7 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
           clockwise ? "G02" : "G03",
           xOutput.format(x),
           iOutput.format(cx - start.x, 1),
-          jOutput.format(cy - start.y, 1),
-          matFeed
+          jOutput.format(cy - start.y, 1)
         );
         break;
       default:
@@ -447,8 +418,7 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
           xOutput.format(x),
           yOutput.format(y),
           iOutput.format(cx - start.x, 1),
-          jOutput.format(cy - start.y, 1),
-          matFeed
+          jOutput.format(cy - start.y, 1)
         );
         break;
       default:
@@ -476,7 +446,7 @@ function onCommand(command) {
  Turn off device at the end of each section
  */
 function onSectionEnd() {
-  setDeviceMode(false);
+  onPower(false);
   forceAny();
 }
 
@@ -484,16 +454,12 @@ function onSectionEnd() {
  Terminate program
  */
 function onClose() {
-  onCommand(COMMAND_COOLANT_OFF);
-
-  onImpliedCommand(COMMAND_END);
   writeBlock("M02"); // stop program
 }
 
 /**
  * UNSUPPORTED FUNCTIONALITY NOT REQUIRED BY WATER JETS
  */
-
 function onRapid5D(_x, _y, _z, _a, _b, _c) {
   error(localize("The CNC does not support 5-axis simultaneous toolpath."));
 }
