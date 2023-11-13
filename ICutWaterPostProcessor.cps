@@ -79,20 +79,10 @@ properties = {
   // pauseDelimited determines wether the cutter should pause between profiles to allow for easy removal
   pauseDelimited: {
     title: "Pause between profiles",
-    description:
-      "If true the cutter will wait between profiles to allow safe removal of parts, press enter to move onto the next profile",
+    description: "Feature is work in progress Do not enable",
     group: "Operation",
     type: "boolean",
     value: false,
-  },
-  useRetracts: {
-    title: "Use retracts",
-    description:
-      "Output retracts, otherwise only output part contours for importing into a third-party jet application.",
-    group: "homePositions",
-    type: "boolean",
-    value: true,
-    scope: "post",
   },
 };
 
@@ -117,9 +107,6 @@ var yOutput = createVariable({ prefix: "Y" }, xyzFormat);
 // circular output
 var iOutput = createReferenceVariable({ prefix: "I" }, xyzFormat);
 var jOutput = createReferenceVariable({ prefix: "J" }, xyzFormat);
-
-var gMotionModal = createModal({}, gFormat); // modal group 1 // G0-G3, ...
-var gAbsIncModal = createModal({}, gFormat); // modal group 3 // G90-91
 
 // collected state
 var sequenceNumber;
@@ -227,7 +214,6 @@ function onDwell(seconds) {
   }
   seconds = clamp(0.001, seconds, 99999.999);
   writeBlock("G04", seconds);
-  writeBlock("M1102");
 }
 
 var pendingRadiusCompensation = -1;
@@ -241,6 +227,7 @@ var cuttingSequence = "";
 var shapeArea = 0;
 function onParameter(name, value) {
   if (name == "action" && value == "pierce") {
+    writeBlock("M1102");
     onDwell(2);
   } else if (name == "beginSequence") {
     if (value == "piercing") {
@@ -345,38 +332,10 @@ function onLinear(_x, _y, _z, feed) {
   }
 }
 
-function doSplit() {
-  if (!split) {
-    split = true;
-    gMotionModal.reset();
-    xOutput.reset();
-    yOutput.reset();
-  }
-}
-
-function resumeFromSplit(feed) {
-  if (split) {
-    split = false;
-    var start = getCurrentPosition();
-    var _pendingRadiusCompensation = pendingRadiusCompensation;
-    pendingRadiusCompensation = -1;
-    onExpandedLinear(start.x, start.y, start.z, feed);
-    pendingRadiusCompensation = _pendingRadiusCompensation;
-  }
-}
-
 /**
  * performs G02 or G03 circular movement
  */
 function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
-  if (
-    !getProperty("useRetracts") &&
-    (movement == MOVEMENT_RAPID || movement == MOVEMENT_HIGH_FEED)
-  ) {
-    doSplit();
-    return;
-  }
-
   // one of X/Y and I/J are required and likewise
 
   if (pendingRadiusCompensation >= 0) {
