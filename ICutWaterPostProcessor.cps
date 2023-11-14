@@ -84,6 +84,14 @@ properties = {
     type: "boolean",
     value: false,
   },
+  // provides file path to .csv
+  dataSheetPath: {
+    title: "DataSheet file path",
+    description: "Provide the file path to the materials datasheet",
+    group: "Operation",
+    type: "String",
+    value: "datasheet.csv",
+  },
 };
 
 // work coordinate system definition
@@ -186,6 +194,7 @@ function onOpen() {
   writeBlock("G131", "10"); //acceleration 10mm/s^2
   writeBlock("S0.9"); //kerf width
   writeBlock("G90");
+  initCSV();
 }
 
 /** Force output of X, Y, and Z. */
@@ -237,6 +246,7 @@ function onParameter(name, value) {
     }
   }
 }
+
 /**
  Toggles device from on and off
  */
@@ -400,3 +410,41 @@ function onRapid5D(_x, _y, _z, _a, _b, _c) {
 function onLinear5D(_x, _y, _z, _a, _b, _c, feed) {
   error(localize("The CNC does not support 5-axis simultaneous toolpath."));
 }
+
+/**
+ * CSV DATA SHEET
+ */
+// var headings = [];
+// var materials = [];
+// function initCSV() {
+//   writeComment("hello");
+//   const fs = require("fs");
+//   const path = getProperty("dataSheetPath");
+
+//   fs.createReadStream(path)
+//     .pipe(parse({ delimiter: ",", from_line: 1 }))
+//     .on("start", (row) => {
+//       for (const heading in row) {
+//         headings.push(heading);
+//       }
+//     })
+//     .on("data", (row) => {
+//       // executed for each row of data
+//       materials.push(constructJson(headings, row));
+//     })
+//     .on("error", (error) => {
+//       // Handle the errors
+//       error(error.message);
+//     });
+//   writeComment(materials.length);
+//   for (const mat in materials) {
+//     writeComment(toString(mat));
+//   }
+// }
+
+// function constructJson(headings, dataPoints) {
+//   return headings.reduce((acc, heading, index) => {
+//     acc[heading] = dataPoints[index];
+//     return JSON.stringify(acc);
+//   }, {});
+// }
