@@ -110,7 +110,6 @@ var jOutput = createReferenceVariable({ prefix: "J" }, xyzFormat);
 
 // collected state
 var sequenceNumber;
-var split = false;
 
 /**
   Writes code block of arguments passed
@@ -185,7 +184,7 @@ function onOpen() {
     writeBlock("F" + matFeed);
   }
   writeBlock("G131", "10"); //acceleration 10mm/s^2
-  writeBlock("S0.9"); //kerf width ??
+  writeBlock("S0.9"); //kerf width
   writeBlock("G90");
 }
 
@@ -225,34 +224,19 @@ var shapePerimeter = 0;
 var shapeSide = "inner";
 var cuttingSequence = "";
 var shapeArea = 0;
+/**
+ Executes commands based on parameters passed by fusion
+ */
 function onParameter(name, value) {
   if (name == "action" && value == "pierce") {
     writeBlock("M1102");
     onDwell(2);
   } else if (name == "beginSequence") {
     if (value == "piercing") {
-      if (cuttingSequence != "piercing") {
-        if (getProperty("allowHeadSwitches")) {
-          writeln("");
-          writeComment("Switch to piercing head before continuing");
-          onCommand(COMMAND_STOP);
-          writeln("");
-        }
-      }
-    } else if (value == "cutting") {
-      if (cuttingSequence == "piercing") {
-        if (getProperty("allowHeadSwitches")) {
-          writeln("");
-          writeComment("Switch to cutting head before continuing");
-          onCommand(COMMAND_STOP);
-          writeln("");
-        }
-      }
+      cuttingSequence = value;
     }
-    cuttingSequence = value;
   }
 }
-
 /**
  Toggles device from on and off
  */
@@ -277,12 +261,6 @@ function onPower(enable) {
   Performs rapid movement G0 command
 */
 function onRapid(_x, _y, _z) {
-  if (split) {
-    split = false;
-    var start = getCurrentPosition();
-    onExpandedRapid(start.x, start.y, start.z);
-  }
-
   var x = xOutput.format(_x);
   var y = yOutput.format(_y);
   if (x || y) {
@@ -345,10 +323,6 @@ function onCircular(clockwise, cx, cy, cz, x, y, z, feed) {
       )
     );
     return;
-  }
-
-  if (split) {
-    resumeFromSplit(feed);
   }
 
   var start = getCurrentPosition();
