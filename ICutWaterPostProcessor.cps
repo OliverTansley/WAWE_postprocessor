@@ -89,8 +89,8 @@ properties = {
     title: "DataSheet file path",
     description: "Provide the file path to the materials datasheet",
     group: "Operation",
-    type: "String",
-    value: "datasheet",
+    type: "string",
+    value: "./datasheet",
   },
 };
 
