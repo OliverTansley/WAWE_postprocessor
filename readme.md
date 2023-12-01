@@ -7,15 +7,15 @@ This post processor is designed for the ['icutWater Eco 2' waterjet.](https://em
 ## Usage
 
 \* **POST OPERATES IN ABSOLUTE COORDINATES** \*
-This means once the cutting position is selected you **MUST** set this as the new home reference point which is found in kr8 drives menu labelled 'set 0 position' make sure this stays ticked.
+This means once the cutting position is selected you **MUST** set this as the new home reference point which is found in kr8 drives menu labelled 'set 0 position' make sure this stays ticked. `ELSE CUT WILL BE MADE AT THE WRONG POSITION`.
 
-The post processor offers two unique options for ensuring the correct gcode is generated depending on desired functionality and cutting material.
+The post processor offers two unique options for ensuring the correct Gcode is generated depending on desired functionality and cutting material.
 
 The three options are selected under post properties when using the post in fusion and are as follows:
 
 - CutMaterial: determines what feed rate and abrasive flow rate to output dependant on material choice.
-- Pause between profiles: when enabled will insert pause commands to wait for user input (ENTER key) between cut profiles to allow them to be removed.
-- Separate word with space: when enabled will put spaces between codes and code arguments in the .CNC file (doesn't impact resulting cuts)
+- Abrasive Rate and Feed rate: allows you to override the `CutMaterial` preset selected to set custom feedrates and abrasive rates for cutting other materials.
+- Separate word with space: when enabled will put spaces between codes and code arguments in the .CNC file (doesn't impact resulting cuts).
 
 ![](./PostProperties.png)
 
@@ -115,7 +115,7 @@ This function executes different code blocks based on the name and value of the 
 function onPower(enable)
 ```
 
-Toggles the water and abrasive feed of the water-jet, if the pause delimited option is enabled then a pause command can be inserted between each activation and deactivation of these outputs.
+Toggles the water and abrasive feed of the water-jet.
 
 ### onRapid
 

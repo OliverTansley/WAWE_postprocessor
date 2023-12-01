@@ -77,13 +77,6 @@ properties = {
     value: true,
   },
   // pauseDelimited determines wether the cutter should pause between profiles to allow for easy removal
-  pauseDelimited: {
-    title: "Pause between profiles",
-    description: "Feature is work in progress Do not enable",
-    group: "Operation",
-    type: "boolean",
-    value: false,
-  },
 };
 
 // work coordinate system definition
@@ -266,9 +259,6 @@ function onPower(enable) {
       writeBlock("M1103");
       onDwell(2);
       writeBlock("M1101");
-      if (getProperty("pauseDelimited")) {
-        writeComment("INSERT PAUSE COMMAND HERE");
-      }
     }
   }
 }
